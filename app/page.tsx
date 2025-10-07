@@ -2,12 +2,26 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Heart, Sparkles, Mic, Globe, Lightbulb, MessageCircle, Shield, Clock, CheckCircle, Star } from "lucide-react"
+import Image from "next/image"
 
 export default function LandingPage() {
   return (
     <main className="min-h-screen bg-gradient-to-b from-background via-accent/5 to-background">
       {/* Hero Section */}
-      <section className="container mx-auto px-4 py-16 md:py-24">
+      <section className="container mx-auto px-4 py-16 md:py-24 relative">
+        {/* Left Logo below navbar, nudged toward center */}
+        <div className="hidden md:block absolute left-20 top-16">
+          <Image
+            src="/mainlogo.png"
+            alt="ArogyaMaa logo"
+            width={224}
+            height={224}
+            className="w-60 h-auto object-contain shadow-none opacity-95 select-none pointer-events-none rounded-full"
+            style={{ WebkitMaskImage: "radial-gradient(circle at center, black 74%, transparent 100%)", maskImage: "radial-gradient(circle at center, black 74%, transparent 100%)" }}
+            priority
+          />
+        </div>
+
         <div className="max-w-4xl mx-auto text-center space-y-8">
           <div className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-gradient-to-r from-primary/20 to-secondary/20 backdrop-blur-sm border border-primary/30 shadow-lg animate-in fade-in slide-in-from-bottom-4 duration-700">
             <Sparkles className="w-5 h-5 text-primary" />

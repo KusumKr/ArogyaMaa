@@ -23,6 +23,17 @@ export const metadata: Metadata = {
   title: "ArogyaMaa - Your Wellness Companion",
   description: "Multilingual voice-based maternal health assistant for pregnant women and new mothers",
   generator: "v0.app",
+  icons: {
+    icon: [
+      { url: "/mainlogo.png", type: "image/png" },
+    ],
+    apple: [
+      { url: "/mainlogo.png", type: "image/png" },
+    ],
+    shortcut: [
+      { url: "/mainlogo.png", type: "image/png" },
+    ],
+  },
 }
 
 export default function RootLayout({

@@ -4,6 +4,7 @@ import { useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Sparkles, ThumbsUp, ThumbsDown } from "lucide-react"
+import api from "@/lib/api"
 
 const wellnessQuotesByTrimester = {
   first: [
@@ -45,10 +46,21 @@ export function TipOfTheDay() {
     ]
   const randomTip = nutritionTips[Math.floor(Math.random() * nutritionTips.length)]
 
-  const handleFeedback = (isHelpful: boolean) => {
+  const handleFeedback = async (isHelpful: boolean) => {
     setFeedback(isHelpful ? "helpful" : "not-helpful")
     setShowThanks(true)
-    // TODO: Send feedback to backend
+
+    try {
+      await api.submitFeedback({
+        trimester: selectedTrimester,
+        helpful: isHelpful,
+        notes: "", // later connect this to a textbox if you want user notes
+      })
+      console.log("Feedback sent to backend!")
+    } catch (error) {
+      console.error("Failed to submit feedback:", error)
+    }
+
     setTimeout(() => setShowThanks(false), 2000)
   }
 
@@ -142,3 +154,4 @@ export function TipOfTheDay() {
     </div>
   )
 }
+

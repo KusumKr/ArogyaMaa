@@ -3,20 +3,18 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
-
+const app = express();
 const tipsRoutes = require('./routes/tips');
 const chatRoutes = require('./routes/chat');
 const feedbackRoutes = require('./routes/feedback');
-app.use('/api', feedbackRoutes);
 
 
-const app = express();
 const PORT = process.env.PORT || 5000;
 
 // CORS Configuration
 const allowedOrigins = process.env.FRONTEND_ORIGINS 
   ? process.env.FRONTEND_ORIGINS.split(',')
-  : ['http://localhost:3000', 'https://arogya-maa.vercel.app'];
+  : ['http://localhost:3000', 'http://localhost:3001', 'https://arogya-maa.vercel.app'];
 
 app.use(cors({
   origin: (origin, callback) => {

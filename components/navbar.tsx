@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Menu, X } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { cn } from "@/lib/utils"
 import Image from "next/image"
 
@@ -13,6 +13,9 @@ export function Navbar() {
   const pathname = usePathname()
   const [language, setLanguage] = useState("english")
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => setMounted(true), [])
 
   const navLinks = [
     { href: "/", label: "Home" },
@@ -42,32 +45,36 @@ export function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className={cn(
-                  "text-sm font-medium transition-colors hover:text-primary",
-                  pathname === link.href ? "text-primary" : "text-muted-foreground",
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className={cn(
+                    "text-sm font-medium transition-colors hover:text-primary",
+                    isActive ? "text-primary" : "text-muted-foreground"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              )
+            })}
 
             {/* Language Selector */}
-            <Select value={language} onValueChange={setLanguage}>
-              <SelectTrigger className="w-[130px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="english">🇬🇧 English</SelectItem>
-                <SelectItem value="hindi">🇮🇳 हिंदी</SelectItem>
-              </SelectContent>
-            </Select>
+            {mounted && (
+              <Select value={language} onValueChange={setLanguage}>
+                <SelectTrigger className="w-[130px]" suppressHydrationWarning>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="english">🇬🇧 English</SelectItem>
+                  <SelectItem value="hindi">🇮🇳 हिंदी</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
-          {/* Mobile Menu Button */}
           <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
             {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
@@ -76,31 +83,34 @@ export function Navbar() {
         {/* Mobile Navigation */}
         {mobileMenuOpen && (
           <div className="md:hidden py-4 space-y-4 border-t border-border">
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                onClick={() => setMobileMenuOpen(false)}
-                className={cn(
-                  "block px-4 py-2 text-sm font-medium rounded-lg transition-colors",
-                  pathname === link.href
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-accent hover:text-accent-foreground",
-                )}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {navLinks.map((link) => {
+              const isActive = pathname === link.href
+              return (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className={cn(
+                    "block px-4 py-2 text-sm font-medium rounded-lg transition-colors",
+                    isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              )
+            })}
             <div className="px-4">
-              <Select value={language} onValueChange={setLanguage}>
-                <SelectTrigger className="w-full">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="english">🇬🇧 English</SelectItem>
-                  <SelectItem value="hindi">🇮🇳 हिंदी</SelectItem>
-                </SelectContent>
-              </Select>
+              {mounted && (
+                <Select value={language} onValueChange={setLanguage}>
+                  <SelectTrigger className="w-full" suppressHydrationWarning>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="english">🇬🇧 English</SelectItem>
+                    <SelectItem value="hindi">🇮🇳 हिंदी</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </div>
         )}

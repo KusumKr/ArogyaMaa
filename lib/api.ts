@@ -8,7 +8,8 @@ export type FeedbackPayload = {
   notes?: string;
 };
 
-const BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL ?? 'http://localhost:5000';
+// Prefer proxying through Next.js API to avoid CORS during development and production
+const NEXT_API_BASE = '';
 
 async function handleResponse(res: Response) {
   if (!res.ok) {
@@ -20,7 +21,7 @@ async function handleResponse(res: Response) {
 
 const api = {
   async submitFeedback(payload: FeedbackPayload) {
-    const res = await fetch(`${BASE_URL}/api/feedback`, {
+    const res = await fetch(`${NEXT_API_BASE}/api/feedback`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

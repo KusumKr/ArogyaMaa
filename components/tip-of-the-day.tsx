@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Sparkles, ThumbsUp, ThumbsDown } from "lucide-react"
@@ -40,11 +40,18 @@ export function TipOfTheDay() {
   const [feedback, setFeedback] = useState<"helpful" | "not-helpful" | null>(null)
   const [showThanks, setShowThanks] = useState(false)
 
-  const randomQuote =
-    wellnessQuotesByTrimester[selectedTrimester][
-      Math.floor(Math.random() * wellnessQuotesByTrimester[selectedTrimester].length)
-    ]
-  const randomTip = nutritionTips[Math.floor(Math.random() * nutritionTips.length)]
+  // Deterministic initial values to match SSR markup
+  const [quote, setQuote] = useState<string>(wellnessQuotesByTrimester.first[0])
+  const [tip, setTip] = useState<{ emoji: string; text: string }>(nutritionTips[0])
+
+  // After hydration, randomize so there is no SSR/CSR mismatch
+  useEffect(() => {
+    const qList = wellnessQuotesByTrimester[selectedTrimester]
+    const q = qList[Math.floor(Math.random() * qList.length)]
+    const t = nutritionTips[Math.floor(Math.random() * nutritionTips.length)]
+    setQuote(q)
+    setTip(t)
+  }, [selectedTrimester])
 
   const handleFeedback = async (isHelpful: boolean) => {
     setFeedback(isHelpful ? "helpful" : "not-helpful")
@@ -100,7 +107,7 @@ export function TipOfTheDay() {
           </div>
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-foreground mb-2">Wellness Quote</h3>
-            <p className="text-sm text-muted-foreground leading-relaxed italic">{randomQuote}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed italic">{quote}</p>
 
             <div className="mt-3 pt-3 border-t border-border/50">
               {!showThanks ? (
@@ -145,9 +152,9 @@ export function TipOfTheDay() {
           </div>
           <div className="flex-1">
             <h3 className="text-sm font-semibold text-foreground mb-1 flex items-center gap-2">
-              Nutrition Tip {randomTip.emoji}
+              Nutrition Tip {tip.emoji}
             </h3>
-            <p className="text-sm text-muted-foreground leading-relaxed">{randomTip.text}</p>
+            <p className="text-sm text-muted-foreground leading-relaxed">{tip.text}</p>
           </div>
         </div>
       </Card>

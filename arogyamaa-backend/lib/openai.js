@@ -1,50 +1,52 @@
-const OpenAI = require('openai');
+const OpenAI = require("openai");
+let client = null;
 
-let openai = null;
-
+// Only initialize if key exists
 if (process.env.OPENAI_API_KEY) {
-  openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  console.log("✅ OpenAI Enabled");
+} else {
+  console.log("⚠️ OpenAI API Key missing — running without AI enhancement");
 }
 
 function getSystemPrompt(language) {
   const prompts = {
-    en: "You are ArogyaMaa, a compassionate health guide for pregnant women in India. Respond with accurate, simple health advice. Keep answers under 100 words.",
-    hi: "आप आरोग्यमाँ हैं, भारत में गर्भवती महिलाओं के लिए स्वास्थ्य मार्गदर्शक। सटीक, सरल स्वास्थ्य सलाह दें। उत्तर 100 शब्दों से कम रखें।"
+    en: "You are ArogyaMaa, a compassionate health guide for pregnant women in India.",
+    hi: "आप आरोग्यमाँ हैं, भारत में गर्भवती महिलाओं के लिए स्वास्थ्य मार्गदर्शक।"
   };
   return prompts[language] || prompts.en;
 }
 
 async function enhanceWithOpenAI(question, trimester, language, baseTip) {
-  if (!openai) throw new Error('OpenAI not configured');
+  // ✅ If no AI key, return only base tip
+  if (!client) {
+    return `${baseTip}\n\n(ℹ️ AI enhancement disabled — no API key)`;
+  }
 
-  const prompt = `Context: Trimester ${trimester}\nQuestion: ${question}\nBase tip: ${baseTip}\n\nProvide personalized response in ${language === 'hi' ? 'Hindi' : 'English'} under 100 words.`;
-
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-3.5-turbo',
+  const completion = await client.chat.completions.create({
+    model: "gpt-5",
     messages: [
-      { role: 'system', content: getSystemPrompt(language) },
-      { role: 'user', content: prompt }
+      { role: "system", content: getSystemPrompt(language) },
+      { role: "user", content: `Trimester: ${trimester}\nQuestion: ${question}\nBase Tip: ${baseTip}` }
     ],
-    max_tokens: 150,
-    temperature: 0.7
+    max_tokens: 200
   });
 
   return completion.choices[0].message.content.trim();
 }
 
 async function chatWithOpenAI(messages, language) {
-  if (!openai) throw new Error('OpenAI not configured');
+  if (!client) {
+    return "(ℹ️ AI disabled — no OpenAI API key set)";
+  }
 
-  const messagesWithSystem = [
-    { role: 'system', content: getSystemPrompt(language) },
-    ...messages
-  ];
-
-  const completion = await openai.chat.completions.create({
-    model: 'gpt-3.5-turbo',
-    messages: messagesWithSystem,
-    max_tokens: 150,
-    temperature: 0.7
+  const completion = await client.chat.completions.create({
+    model: "gpt-5",
+    messages: [
+      { role: "system", content: getSystemPrompt(language) },
+      ...messages
+    ],
+    max_tokens: 200
   });
 
   return completion.choices[0].message.content.trim();

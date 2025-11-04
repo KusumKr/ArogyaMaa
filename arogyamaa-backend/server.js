@@ -1,20 +1,32 @@
-// server.js - ArogyaMaa Backend Main Entry
+// server.js - Working version without new features yet
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+
 const app = express();
-const tipsRoutes = require('./routes/tips');
-const chatRoutes = require('./routes/chat');
-const feedbackRoutes = require('./routes/feedback');
-
-
 const PORT = process.env.PORT || 5000;
+
+// MongoDB connection (optional for now)
+if (process.env.MONGODB_URI) {
+  const mongoose = require('mongoose');
+  mongoose.connect(process.env.MONGODB_URI)
+    .then(() => {
+      console.log('✅ MongoDB Connected Successfully');
+      console.log(`📊 Database: ${mongoose.connection.name}`);
+    })
+    .catch(err => {
+      console.error('❌ MongoDB Connection Error:', err.message);
+      console.log('⚠️  Continuing without database...');
+    });
+} else {
+  console.warn('⚠️  MONGODB_URI not set. Running without database.');
+}
 
 // CORS Configuration
 const allowedOrigins = process.env.FRONTEND_ORIGINS 
   ? process.env.FRONTEND_ORIGINS.split(',')
-  : ['http://localhost:3000', 'http://localhost:3001', 'https://arogya-maa.vercel.app'];
+  : ['http://localhost:3000', 'https://arogya-maa.vercel.app'];
 
 app.use(cors({
   origin: (origin, callback) => {
@@ -45,21 +57,41 @@ app.use((req, res, next) => {
   next();
 });
 
-// Routes
+// Import routes
+const tipsRoutes = require('./routes/tips');
+const feedbackRoutes = require('./routes/feedback');
+const chatRoutes = require('./routes/chat');
+const chatEnhancedRoutes = require('./routes/chat-enhanced'); // ADD THIS
+
+// Health check
 app.get('/api/health', (req, res) => {
+  const mongoose = require('mongoose');
+  const dbStatus = mongoose.connection.readyState === 1 
+    ? 'connected' 
+    : 'disconnected';
+  
   res.json({
     status: 'ok',
     uptime: process.uptime(),
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    database: {
+      status: dbStatus,
+      type: process.env.MONGODB_URI ? 'MongoDB' : 'JSON'
+    }
   });
 });
 
+// Routes
 app.use('/api', tipsRoutes);
 app.use('/api', feedbackRoutes);
 app.use('/api', chatRoutes);
+app.use('/api', chatEnhancedRoutes);
 
 app.get('/', (req, res) => {
-  res.json({ message: 'ArogyaMaa API', version: '1.0.0' });
+  res.json({ 
+    message: 'ArogyaMaa API', 
+    version: '1.0.0' 
+  });
 });
 
 // Error handling
@@ -70,7 +102,9 @@ app.use((req, res) => {
 app.use((err, req, res, next) => {
   console.error('[ERROR]', err.stack);
   res.status(err.status || 500).json({
-    error: process.env.NODE_ENV === 'production' ? 'Internal server error' : err.message
+    error: process.env.NODE_ENV === 'production' 
+      ? 'Internal server error' 
+      : err.message
   });
 });
 
@@ -81,6 +115,16 @@ app.listen(PORT, () => {
   console.log(`📡 Port: ${PORT}`);
   console.log(`🔗 http://localhost:${PORT}`);
   console.log('=================================');
+});
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM signal received');
+  const mongoose = require('mongoose');
+  if (mongoose.connection.readyState === 1) {
+    await mongoose.connection.close();
+  }
+  process.exit(0);
 });
 
 module.exports = app;

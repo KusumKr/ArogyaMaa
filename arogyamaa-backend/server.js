@@ -1,4 +1,4 @@
-// server.js - Working version without new features yet
+// server.js - Fixed version
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -6,22 +6,6 @@ const rateLimit = require('express-rate-limit');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-
-// MongoDB connection (optional for now)
-if (process.env.MONGODB_URI) {
-  const mongoose = require('mongoose');
-  mongoose.connect(process.env.MONGODB_URI)
-    .then(() => {
-      console.log('✅ MongoDB Connected Successfully');
-      console.log(`📊 Database: ${mongoose.connection.name}`);
-    })
-    .catch(err => {
-      console.error('❌ MongoDB Connection Error:', err.message);
-      console.log('⚠️  Continuing without database...');
-    });
-} else {
-  console.warn('⚠️  MONGODB_URI not set. Running without database.');
-}
 
 // CORS Configuration
 const allowedOrigins = process.env.FRONTEND_ORIGINS 
@@ -57,26 +41,74 @@ app.use((req, res, next) => {
   next();
 });
 
+// Check AI providers on startup
+console.log('\n🤖 Checking AI Providers...');
+
+if (process.env.OPENAI_API_KEY) {
+  console.log('✅ OpenAI API Key configured');
+} else {
+  console.warn('⚠️  OpenAI API Key not set');
+}
+
+if (process.env.GROQ_API_KEY) {
+  console.log('✅ Groq API Key configured');
+} else {
+  console.warn('⚠️  Groq API Key not set');
+}
+
+if (process.env.GEMINI_API_KEY) {
+  console.log('✅ Gemini API Key configured');
+} else {
+  console.warn('⚠️  Gemini API Key not set');
+}
+
+// Check Ollama availability
+(async () => {
+  try {
+    const { isOllamaAvailable } = require('./lib/ollama');
+    const ollamaRunning = await isOllamaAvailable();
+    
+    if (ollamaRunning) {
+      console.log('✅ Ollama is running (Local AI)');
+    } else {
+      console.warn('⚠️  Ollama not running');
+    }
+  } catch (error) {
+    console.warn('⚠️  Ollama module not found (install ollama if needed)');
+  }
+
+  // Final check
+  const hasAnyProvider = process.env.OPENAI_API_KEY || 
+                         process.env.GROQ_API_KEY || 
+                         process.env.GEMINI_API_KEY;
+  
+  if (!hasAnyProvider) {
+    console.warn('\n⚠️  WARNING: No AI provider configured!');
+    console.warn('   Chat will only use static responses.');
+    console.warn('   Get free API keys from:');
+    console.warn('   - Groq: https://console.groq.com');
+    console.warn('   - Gemini: https://aistudio.google.com/apikey');
+  } else {
+    console.log('\n✅ AI providers ready!\n');
+  }
+})();
+
 // Import routes
 const tipsRoutes = require('./routes/tips');
 const feedbackRoutes = require('./routes/feedback');
 const chatRoutes = require('./routes/chat');
-const chatEnhancedRoutes = require('./routes/chat-enhanced'); // ADD THIS
+const chatEnhancedRoutes = require('./routes/chat-enhanced');
 
 // Health check
 app.get('/api/health', (req, res) => {
-  const mongoose = require('mongoose');
-  const dbStatus = mongoose.connection.readyState === 1 
-    ? 'connected' 
-    : 'disconnected';
-  
   res.json({
     status: 'ok',
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
-    database: {
-      status: dbStatus,
-      type: process.env.MONGODB_URI ? 'MongoDB' : 'JSON'
+    features: {
+      openai: !!process.env.OPENAI_API_KEY,
+      groq: !!process.env.GROQ_API_KEY,
+      gemini: !!process.env.GEMINI_API_KEY
     }
   });
 });
@@ -90,13 +122,20 @@ app.use('/api', chatEnhancedRoutes);
 app.get('/', (req, res) => {
   res.json({ 
     message: 'ArogyaMaa API', 
-    version: '1.0.0' 
+    version: '1.0.0',
+    endpoints: [
+      '/api/health',
+      '/api/chat/session',
+      '/api/chat/message',
+      '/api/tip-of-day',
+      '/api/get-tip'
+    ]
   });
 });
 
 // Error handling
 app.use((req, res) => {
-  res.status(404).json({ error: 'Endpoint not found' });
+  res.status(404).json({ error: 'Endpoint not found', path: req.path });
 });
 
 app.use((err, req, res, next) => {
@@ -115,16 +154,6 @@ app.listen(PORT, () => {
   console.log(`📡 Port: ${PORT}`);
   console.log(`🔗 http://localhost:${PORT}`);
   console.log('=================================');
-});
-
-// Graceful shutdown
-process.on('SIGTERM', async () => {
-  console.log('SIGTERM signal received');
-  const mongoose = require('mongoose');
-  if (mongoose.connection.readyState === 1) {
-    await mongoose.connection.close();
-  }
-  process.exit(0);
 });
 
 module.exports = app;

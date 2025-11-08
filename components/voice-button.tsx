@@ -1,42 +1,49 @@
-"use client"
+// components/voice-button.tsx
+'use client';
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Mic, MicOff } from "lucide-react"
+import { useEffect, useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Mic, MicOff } from 'lucide-react';
+import { useVoice } from '@/hooks/useVoice';
 
 interface VoiceButtonProps {
-  onTranscript: (transcript: string) => void
+  onTranscript: (text: string) => void;
+  language?: string;
 }
 
-export function VoiceButton({ onTranscript }: VoiceButtonProps) {
-  const [isListening, setIsListening] = useState(false)
+export function VoiceButton({ onTranscript, language = 'en' }: VoiceButtonProps) {
+  const { isListening, transcript, startListening, stopListening, isSupported } = useVoice();
 
-  const handleVoiceInput = () => {
-    setIsListening(!isListening)
-
-    // TODO: integrate speech recognition here
-    // Example: Use Web Speech API or external service
-    if (!isListening) {
-      console.log("Starting voice input...")
-      // Simulate voice input after 2 seconds
-      setTimeout(() => {
-        onTranscript("This is a sample voice input")
-        setIsListening(false)
-      }, 2000)
-    } else {
-      console.log("Stopping voice input...")
+  // When transcript changes, send it to parent
+  useEffect(() => {
+    if (transcript && transcript.trim()) {
+      console.log('Sending transcript to parent:', transcript);
+      onTranscript(transcript);
     }
+  }, [transcript, onTranscript]);
+
+  const handleClick = () => {
+    if (isListening) {
+      stopListening();
+    } else {
+      startListening(language);
+    }
+  };
+
+  if (!isSupported) {
+    return null; // Don't show button if not supported
   }
 
   return (
     <Button
       type="button"
-      variant="ghost"
+      variant={isListening ? "destructive" : "ghost"}
       size="icon"
-      onClick={handleVoiceInput}
-      className={isListening ? "text-destructive animate-pulse" : "text-muted-foreground"}
+      onClick={handleClick}
+      className={`transition-all ${isListening ? 'animate-pulse' : ''}`}
+      title={isListening ? 'Stop listening' : 'Start voice input'}
     >
-      {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+      {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
     </Button>
-  )
+  );
 }

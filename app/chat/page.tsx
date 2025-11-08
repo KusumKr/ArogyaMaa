@@ -6,8 +6,9 @@ import { Card } from "@/components/ui/card"
 import { ChatMessage } from "@/components/chat-message"
 import { VoiceButton } from "@/components/voice-button"
 import { TipOfTheDay } from "@/components/tip-of-the-day"
-import { Send } from "lucide-react"
+import { Send, Volume2, VolumeX } from "lucide-react"
 import chatAPI from "@/lib/chatAPI"
+import { useVoice } from "@/hooks/useVoice"
 
 type Message = {
   id: string
@@ -20,11 +21,15 @@ export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState("")
   const [loading, setLoading] = useState(false)
+  const [voiceEnabled, setVoiceEnabled] = useState(false)
 
   const [selectedLanguage, setSelectedLanguage] = useState("en")
   const [selectedTrimester, setSelectedTrimester] = useState("1")
 
-  const messagesEndRef = useRef(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Voice features
+  const { speak, stopSpeaking, isSupported } = useVoice()
 
   useEffect(() => {
     initChat()
@@ -37,16 +42,23 @@ export default function ChatPage() {
     })
 
     const history = await chatAPI.getHistory()
-    if (history?.messages) setMessages(history.messages)
-    else {
-      setMessages([
-        {
-          id: "1",
-          role: "assistant",
-          content: "Namaste! I'm ArogyaMaa, your wellness companion. How can I support you today?",
-          timestamp: new Date(),
-        },
-      ])
+    if (history?.messages) {
+      setMessages(history.messages)
+    } else {
+      const welcomeMsg = {
+        id: "1",
+        role: "assistant" as const,
+        content: selectedLanguage === 'hi' 
+          ? "नमस्ते! मैं आरोग्यमाँ हूँ, आपकी स्वास्थ्य साथी। मैं आज आपकी कैसे मदद कर सकती हूँ?"
+          : "Namaste! I'm ArogyaMaa, your wellness companion. How can I support you today?",
+        timestamp: new Date(),
+      }
+      setMessages([welcomeMsg])
+      
+      // Speak welcome message if voice is enabled
+      if (voiceEnabled) {
+        speak(welcomeMsg.content, selectedLanguage)
+      }
     }
   }
 
@@ -57,7 +69,7 @@ export default function ChatPage() {
   const handleSendMessage = async () => {
     if (!inputValue.trim()) return
 
-    const userText = inputValue
+    const userText = inputValue.trim()
     setInputValue("")
 
     const newUserMsg: Message = {
@@ -84,13 +96,25 @@ export default function ChatPage() {
       }
 
       setMessages((prev) => [...prev, botReply])
+
+      // Speak response if voice is enabled
+      if (voiceEnabled && res.reply) {
+        // Small delay to ensure message is visible
+        setTimeout(() => {
+          speak(res.reply, selectedLanguage)
+        }, 300)
+      }
     } catch (error) {
+      const errorMsg = selectedLanguage === 'hi'
+        ? "⚠️ कुछ गलत हो गया। कृपया पुनः प्रयास करें।"
+        : "⚠️ Oops! Something went wrong. Please try again."
+      
       setMessages((prev) => [
         ...prev,
         {
           id: Date.now().toString(),
           role: "assistant",
-          content: "⚠️ Oops! Something went wrong. Please try again.",
+          content: errorMsg,
           timestamp: new Date(),
         },
       ])
@@ -100,18 +124,48 @@ export default function ChatPage() {
   }
 
   const handleVoiceInput = (transcript: string) => {
+    console.log('Received transcript:', transcript)
     setInputValue(transcript)
+    // Optionally auto-send after voice input
+    // setTimeout(() => handleSendMessage(), 500)
+  }
+
+  const toggleVoiceOutput = () => {
+    if (voiceEnabled) {
+      stopSpeaking()
+    }
+    setVoiceEnabled(!voiceEnabled)
   }
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
-
       {/* Header dropdowns */}
-      <div className="p-3 flex gap-2 justify-end">
+      <div className="p-3 flex gap-2 justify-end items-center">
+        {/* Voice Output Toggle */}
+        {isSupported && (
+          <Button
+            variant={voiceEnabled ? "default" : "outline"}
+            size="sm"
+            onClick={toggleVoiceOutput}
+            className="gap-2"
+          >
+            {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+            <span className="text-xs">
+              {voiceEnabled 
+                ? (selectedLanguage === 'hi' ? 'आवाज़ चालू' : 'Voice On')
+                : (selectedLanguage === 'hi' ? 'आवाज़ बंद' : 'Voice Off')
+              }
+            </span>
+          </Button>
+        )}
+
         <select
           className="border rounded px-2 py-1 text-sm"
           value={selectedLanguage}
-          onChange={(e) => setSelectedLanguage(e.target.value)}
+          onChange={(e) => {
+            setSelectedLanguage(e.target.value)
+            stopSpeaking() // Stop any ongoing speech
+          }}
         >
           <option value="en">English</option>
           <option value="hi">हिंदी</option>
@@ -133,11 +187,28 @@ export default function ChatPage() {
 
         <div className="flex-1 space-y-4 overflow-y-auto">
           {messages.map((m) => (
-            <ChatMessage key={m.id} message={m} />
+            <div key={m.id} className="relative group">
+              <ChatMessage message={m} />
+              
+              {/* Listen button for assistant messages */}
+              {m.role === 'assistant' && isSupported && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => speak(m.content, selectedLanguage)}
+                  className="absolute -bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-xs gap-1"
+                >
+                  <Volume2 className="w-3 h-3" />
+                  {selectedLanguage === 'hi' ? 'सुनें' : 'Listen'}
+                </Button>
+              )}
+            </div>
           ))}
 
           {loading && (
-            <div className="text-sm text-gray-500">ArogyaMaa is typing...</div>
+            <div className="text-sm text-gray-500 animate-pulse">
+              {selectedLanguage === 'hi' ? 'आरोग्यमाँ टाइप कर रही है...' : 'ArogyaMaa is typing...'}
+            </div>
           )}
 
           <div ref={messagesEndRef} />
@@ -150,7 +221,12 @@ export default function ChatPage() {
                 type="text"
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSendMessage()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    handleSendMessage()
+                  }
+                }}
                 placeholder={
                   selectedLanguage === "hi"
                     ? "अपना सवाल पूछें..."
@@ -158,7 +234,10 @@ export default function ChatPage() {
                 }
                 className="flex-1 bg-transparent outline-none"
               />
-              <VoiceButton onTranscript={handleVoiceInput} />
+              <VoiceButton 
+                onTranscript={handleVoiceInput} 
+                language={selectedLanguage}
+              />
             </div>
 
             <Button
@@ -170,6 +249,15 @@ export default function ChatPage() {
               <Send className="w-5 h-5" />
             </Button>
           </div>
+
+          {/* Voice hint */}
+          {isSupported && (
+            <p className="text-xs text-muted-foreground text-center mt-2">
+              {selectedLanguage === 'hi'
+                ? '🎤 माइक बटन दबाएं और बोलें'
+                : '🎤 Press mic to speak your question'}
+            </p>
+          )}
         </Card>
       </main>
     </div>

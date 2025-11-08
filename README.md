@@ -1,4 +1,4 @@
-# 🌸 ArogyaMaa - Empowering Motherhood with Personalized Care
+#  ArogyaMaa - Empowering Motherhood with Personalized Care
 
 [![Live Demo](https://img.shields.io/badge/demo-live-green)](https://arogya-maa.vercel.app)
 

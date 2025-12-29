@@ -27,43 +27,26 @@
 - Mental wellness support
 - Safety guidelines
 
-### 📊 **Progress Tracking & Analytics** ⭐ NEW
-- **Comprehensive Dashboard**: Visual stats, engagement metrics, and progress charts
-- **Activity Tracking**: Messages sent, tips viewed, days active, voice interactions
-- **Streak System**: Daily login streaks with longest streak tracking
-- **Engagement Score**: Calculated based on overall activity
-- **Achievement Badges**: Unlock badges for milestones (First Message, Chatty, Knowledge Seeker, Streak Master, etc.)
-- **Conversation History**: Complete chat history with timestamps (persisted in MongoDB)
-- **Feedback System**: Rate tips and conversations
-- **Session Management**: Track and manage user sessions (MongoDB-backed)
-- **Persistent Storage**: All data saved to MongoDB database
+### 📊 **Progress Tracking & Analytics**
+- Visual stats and engagement metrics
+- Activity tracking and streak system
+- Achievement badges for milestones
 
-### 📝 **Health Journal** ⭐ NEW
-- **Daily Entries**: Track mood, symptoms, weight, energy levels, and sleep
-- **Symptom Logging**: Record and monitor pregnancy symptoms
-- **Mood Tracking**: Track emotional well-being with emoji-based mood indicators
-- **Notes**: Add personal notes and observations
-- **History View**: Review past entries with date-based organization
+### 📝 **Health Journal**
+- Track mood, symptoms, weight, and energy levels
+- Record daily health observations
 
-### 🔔 **Reminder System** ⭐ NEW
-- **Smart Reminders**: Set reminders for appointments, medications, checkups, and tests
-- **Due Date Tracking**: Never miss important dates
-- **Categories**: Organize reminders by type (appointment, medication, checkup, test, other)
-- **Completion Tracking**: Mark reminders as completed
-- **Past Due Alerts**: Visual indicators for overdue reminders
+### 🔔 **Reminder System**
+- Set reminders for appointments and medications
+- Track due dates and completion status
 
-### 🔖 **Bookmark & Save** ⭐ NEW
-- **Save Tips**: Bookmark favorite tips from chat responses
-- **Organized Collection**: View all bookmarked tips in one place
-- **Category Tags**: Tips organized by category
-- **Quick Access**: Easy removal and management of saved tips
+### 🔖 **Bookmark & Save**
+- Bookmark favorite tips from chat
+- View and manage saved tips
 
-### 🏆 **Achievement System** ⭐ NEW
-- **Gamification**: Unlock badges as you engage with the platform
-- **Categories**: Engagement, Health, Knowledge, and Community badges
-- **Milestones**: Track pregnancy milestones and achievements
-- **Visual Display**: Beautiful badge cards with descriptions
-- **Progress Indicators**: See your progress toward next achievements
+### 🏆 **Achievement System**
+- Unlock badges for milestones
+- Track progress and achievements
 
 ### 🔒 **Privacy & Security**
 - CORS-protected API
@@ -106,7 +89,7 @@
 arogyamaa/
 ├── app/                          # Next.js app router
 │   ├── chat/                     # Chat page
-│   ├── progress/                 # Progress tracking dashboard ⭐ NEW
+│   ├── progress/                 # Progress tracking dashboard
 │   ├── about/                    # About page
 │   ├── features/                 # Features page
 │   └── hooks/                    # Custom React hooks
@@ -117,9 +100,9 @@ arogyamaa/
 │   ├── chat-message.tsx         # Chat bubble component
 │   ├── voice-button.tsx         # Voice input button
 │   ├── tip-of-the-day.tsx      # Daily tip card
-│   ├── health-journal.tsx      # Health journal component ⭐ NEW
-│   ├── reminders-list.tsx      # Reminders component ⭐ NEW
-│   ├── bookmarked-tips.tsx     # Bookmarked tips component ⭐ NEW
+│   ├── health-journal.tsx      # Health journal component
+│   ├── reminders-list.tsx      # Reminders component
+│   ├── bookmarked-tips.tsx     # Bookmarked tips component
 │   ├── navbar.tsx               # Navigation bar
 │   └── footer.tsx               # Footer component
 │
@@ -136,9 +119,9 @@ arogyamaa/
 │   │   ├── tips.js             # Tips endpoints
 │   │   ├── feedback.js         # Feedback endpoints
 │   │   ├── chat-enhanced.js    # AI chat endpoints
-│   │   └── progress.js         # Progress tracking endpoints ⭐ NEW
+│   │   └── progress.js         # Progress tracking endpoints
 │   ├── models/
-│   │   ├── Progress.js         # Progress tracking model ⭐ NEW
+│   │   ├── Progress.js         # Progress tracking model
 │   ├── lib/
 │   │   ├── openai.js           # OpenAI wrapper
 │   │   ├── translate.js        # Translation utilities

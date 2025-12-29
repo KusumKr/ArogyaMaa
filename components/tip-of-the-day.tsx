@@ -35,7 +35,13 @@ const nutritionTips = [
   { emoji: "🌾", text: "Whole grains provide essential fiber and nutrients" },
 ]
 
-export function TipOfTheDay() {
+type TipOfTheDayProps = {
+  onTipViewed?: () => void
+  sessionId?: string
+  language?: string
+}
+
+export function TipOfTheDay({ onTipViewed, sessionId, language = "en" }: TipOfTheDayProps) {
   const [selectedTrimester, setSelectedTrimester] = useState<"first" | "second" | "third">("first")
   const [feedback, setFeedback] = useState<"helpful" | "not-helpful" | null>(null)
   const [showThanks, setShowThanks] = useState(false)
@@ -51,7 +57,11 @@ export function TipOfTheDay() {
     const t = nutritionTips[Math.floor(Math.random() * nutritionTips.length)]
     setQuote(q)
     setTip(t)
-  }, [selectedTrimester])
+    // Track tip viewed
+    if (onTipViewed) {
+      onTipViewed()
+    }
+  }, [selectedTrimester, onTipViewed])
 
   const handleFeedback = async (isHelpful: boolean) => {
     setFeedback(isHelpful ? "helpful" : "not-helpful")

@@ -7,6 +7,7 @@ import "./globals.css"
 import { Suspense } from "react"
 import { Navbar } from "@/components/navbar"
 import { Footer } from "@/components/footer"
+import { Toaster } from "@/components/ui/sonner"
 
 const poppins = Poppins({
   subsets: ["latin"],
@@ -50,6 +51,7 @@ export default function RootLayout({
           <Footer />
         </div>
         <Analytics />
+        <Toaster />
       </body>
     </html>
   )

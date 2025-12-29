@@ -1,4 +1,4 @@
-#  ArogyaMaa - Empowering Motherhood with Personalized Care
+# ArogyaMaa - Empowering Motherhood with Personalized Care
 
 [![Live Demo](https://img.shields.io/badge/demo-live-green)](https://arogya-maa.vercel.app)
 
@@ -27,10 +27,43 @@
 - Mental wellness support
 - Safety guidelines
 
-### 📊 **Progress Tracking**
-- Conversation history
-- Feedback system
-- Session management
+### 📊 **Progress Tracking & Analytics** ⭐ NEW
+- **Comprehensive Dashboard**: Visual stats, engagement metrics, and progress charts
+- **Activity Tracking**: Messages sent, tips viewed, days active, voice interactions
+- **Streak System**: Daily login streaks with longest streak tracking
+- **Engagement Score**: Calculated based on overall activity
+- **Achievement Badges**: Unlock badges for milestones (First Message, Chatty, Knowledge Seeker, Streak Master, etc.)
+- **Conversation History**: Complete chat history with timestamps (persisted in MongoDB)
+- **Feedback System**: Rate tips and conversations
+- **Session Management**: Track and manage user sessions (MongoDB-backed)
+- **Persistent Storage**: All data saved to MongoDB database
+
+### 📝 **Health Journal** ⭐ NEW
+- **Daily Entries**: Track mood, symptoms, weight, energy levels, and sleep
+- **Symptom Logging**: Record and monitor pregnancy symptoms
+- **Mood Tracking**: Track emotional well-being with emoji-based mood indicators
+- **Notes**: Add personal notes and observations
+- **History View**: Review past entries with date-based organization
+
+### 🔔 **Reminder System** ⭐ NEW
+- **Smart Reminders**: Set reminders for appointments, medications, checkups, and tests
+- **Due Date Tracking**: Never miss important dates
+- **Categories**: Organize reminders by type (appointment, medication, checkup, test, other)
+- **Completion Tracking**: Mark reminders as completed
+- **Past Due Alerts**: Visual indicators for overdue reminders
+
+### 🔖 **Bookmark & Save** ⭐ NEW
+- **Save Tips**: Bookmark favorite tips from chat responses
+- **Organized Collection**: View all bookmarked tips in one place
+- **Category Tags**: Tips organized by category
+- **Quick Access**: Easy removal and management of saved tips
+
+### 🏆 **Achievement System** ⭐ NEW
+- **Gamification**: Unlock badges as you engage with the platform
+- **Categories**: Engagement, Health, Knowledge, and Community badges
+- **Milestones**: Track pregnancy milestones and achievements
+- **Visual Display**: Beautiful badge cards with descriptions
+- **Progress Indicators**: See your progress toward next achievements
 
 ### 🔒 **Privacy & Security**
 - CORS-protected API
@@ -55,9 +88,10 @@
 
 **Backend:**
 - Node.js + Express
+- MongoDB (Mongoose) - Persistent database storage
 - Groq AI (free tier)
 - OpenAI (optional)
-- In-memory session storage
+- Session management with MongoDB
 - JSON-based tip database
 
 **Deployment:**
@@ -72,6 +106,7 @@
 arogyamaa/
 ├── app/                          # Next.js app router
 │   ├── chat/                     # Chat page
+│   ├── progress/                 # Progress tracking dashboard ⭐ NEW
 │   ├── about/                    # About page
 │   ├── features/                 # Features page
 │   └── hooks/                    # Custom React hooks
@@ -82,6 +117,9 @@ arogyamaa/
 │   ├── chat-message.tsx         # Chat bubble component
 │   ├── voice-button.tsx         # Voice input button
 │   ├── tip-of-the-day.tsx      # Daily tip card
+│   ├── health-journal.tsx      # Health journal component ⭐ NEW
+│   ├── reminders-list.tsx      # Reminders component ⭐ NEW
+│   ├── bookmarked-tips.tsx     # Bookmarked tips component ⭐ NEW
 │   ├── navbar.tsx               # Navigation bar
 │   └── footer.tsx               # Footer component
 │
@@ -97,7 +135,10 @@ arogyamaa/
 │   ├── routes/
 │   │   ├── tips.js             # Tips endpoints
 │   │   ├── feedback.js         # Feedback endpoints
-│   │   └── chat-enhanced.js    # AI chat endpoints
+│   │   ├── chat-enhanced.js    # AI chat endpoints
+│   │   └── progress.js         # Progress tracking endpoints ⭐ NEW
+│   ├── models/
+│   │   ├── Progress.js         # Progress tracking model ⭐ NEW
 │   ├── lib/
 │   │   ├── openai.js           # OpenAI wrapper
 │   │   ├── translate.js        # Translation utilities
@@ -171,6 +212,11 @@ PORT=5000
 NODE_ENV=development
 FRONTEND_ORIGINS=http://localhost:3000,https://arogya-maa.vercel.app
 
+# Database (Required for persistent storage)
+MONGODB_URI=mongodb://localhost:27017/arogyamaa
+# Or use MongoDB Atlas (recommended for production):
+# MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/arogyamaa
+
 # AI Providers (add at least one)
 GROQ_API_KEY=gsk_your_groq_key_here
 OPENAI_API_KEY=sk_your_openai_key_here
@@ -179,6 +225,32 @@ GEMINI_API_KEY=your_gemini_key_here
 # Optional
 ADMIN_KEY=your_admin_secret_here
 ```
+
+---
+
+## 🗄️ Database Setup
+
+### **MongoDB (Required for Persistent Storage)**
+
+The backend uses MongoDB for persistent data storage. You have two options:
+
+#### **Option 1: MongoDB Atlas (Recommended - Free Cloud Database)**
+
+1. Visit: https://www.mongodb.com/cloud/atlas/register
+2. Sign up for free (no credit card needed)
+3. Create a new cluster (free tier: 512MB storage)
+4. Create database user and set password
+5. Whitelist IP address (0.0.0.0/0 for development)
+6. Get connection string: `mongodb+srv://username:password@cluster.mongodb.net/arogyamaa`
+7. Add to `.env`: `MONGODB_URI=your_connection_string`
+
+#### **Option 2: Local MongoDB**
+
+1. Install MongoDB: https://www.mongodb.com/try/download/community
+2. Start MongoDB service
+3. Add to `.env`: `MONGODB_URI=mongodb://localhost:27017/arogyamaa`
+
+**Note:** If `MONGODB_URI` is not set, the app will use in-memory storage (data lost on restart).
 
 ---
 
@@ -219,6 +291,15 @@ ADMIN_KEY=your_admin_secret_here
 | GET | `/tip-of-day` | Get daily tip |
 | GET | `/tips` | Get all tips by trimester |
 | POST | `/feedback` | Submit feedback |
+| GET | `/progress/:sessionId` | Get user progress data |
+| POST | `/progress/:sessionId/track` | Track user activity |
+| POST | `/progress/:sessionId/bookmark` | Bookmark a tip |
+| DELETE | `/progress/:sessionId/bookmark/:tipId` | Remove bookmark |
+| POST | `/progress/:sessionId/journal` | Add health journal entry |
+| GET | `/progress/:sessionId/journal` | Get health journal entries |
+| POST | `/progress/:sessionId/reminder` | Add reminder |
+| GET | `/progress/:sessionId/reminders` | Get reminders |
+| PUT | `/progress/:sessionId/reminder/:reminderId` | Update reminder |
 
 **Example Request:**
 ```javascript
@@ -379,6 +460,11 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 - 🎤 **Voice-enabled** chat in 2 languages
 - 🤖 **AI-powered** responses with multiple providers
 - 🌍 **Multilingual** support (EN/HI)
+- 📊 **Comprehensive Progress Tracking** with analytics dashboard
+- 📝 **Health Journal** for tracking symptoms and mood
+- 🔔 **Smart Reminder System** for appointments and medications
+- 🔖 **Bookmark System** to save favorite tips
+- 🏆 **Achievement Badges** for gamification
 - 🚀 **Production-ready** deployment
 - ♿ **Accessible** design
 

@@ -1,11 +1,29 @@
-// server.js - Fixed version
+// server.js - Production-ready with MongoDB
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const rateLimit = require('express-rate-limit');
+const connectDB = require('./config/database');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+// Connect to MongoDB
+if (process.env.MONGODB_URI) {
+  connectDB()
+    .then(() => {
+      console.log('✅ Database ready - using MongoDB for persistent storage');
+    })
+    .catch(err => {
+      console.error('❌ Database connection failed:', err.message);
+      console.warn('⚠️  Continuing without database - using in-memory storage');
+      console.warn('   Data will be lost on server restart');
+    });
+} else {
+  console.warn('⚠️  MONGODB_URI not set - using in-memory storage');
+  console.warn('   Set MONGODB_URI in .env for persistent storage');
+  console.warn('   Get free MongoDB: https://www.mongodb.com/cloud/atlas/register');
+}
 
 // CORS Configuration
 const allowedOrigins = process.env.FRONTEND_ORIGINS 
@@ -98,6 +116,7 @@ const tipsRoutes = require('./routes/tips');
 const feedbackRoutes = require('./routes/feedback');
 const chatRoutes = require('./routes/chat');
 const chatEnhancedRoutes = require('./routes/chat-enhanced');
+const progressRoutes = require('./routes/progress');
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -118,6 +137,7 @@ app.use('/api', tipsRoutes);
 app.use('/api', feedbackRoutes);
 app.use('/api', chatRoutes);
 app.use('/api', chatEnhancedRoutes);
+app.use('/api', progressRoutes);
 
 app.get('/', (req, res) => {
   res.json({ 

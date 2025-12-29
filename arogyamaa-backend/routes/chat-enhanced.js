@@ -1,8 +1,9 @@
-// routes/chat-enhanced.js - Complete working version
+// routes/chat-enhanced.js - MongoDB-backed chat with in-memory fallback
 const express = require('express');
 const router = express.Router();
 const fs = require('fs');
 const path = require('path');
+const Conversation = require('../models/Conversation');
 
 // Load tips data
 const tipsPath = path.join(__dirname, '../data/nutritionTips.json');
@@ -14,7 +15,7 @@ try {
   console.error('Error loading nutritionTips.json:', err);
 }
 
-// In-memory sessions
+// In-memory sessions (fallback if MongoDB unavailable)
 const sessions = new Map();
 const conversations = new Map();
 
@@ -214,7 +215,35 @@ router.post('/chat/message', async (req, res) => {
     });
 
     // Save conversation (keep last 20 messages)
-    conversations.set(sessionId, conversation.slice(-20));
+    const finalConversation = conversation.slice(-20);
+    conversations.set(sessionId, finalConversation);
+
+    // Save to MongoDB (async, don't wait)
+    (async () => {
+      try {
+        let conv = await Conversation.findOne({ sessionId });
+        if (!conv) {
+          conv = new Conversation({
+            sessionId,
+            messages: finalConversation,
+            metadata: {
+              trimester,
+              language,
+              deviceType: 'web'
+            }
+          });
+        } else {
+          conv.messages = finalConversation;
+          conv.metadata.trimester = trimester;
+          conv.metadata.language = language;
+          conv.lastActiveAt = new Date();
+        }
+        await conv.save();
+      } catch (error) {
+        console.warn('Failed to save conversation to MongoDB:', error.message);
+        // Continue with in-memory storage
+      }
+    })();
 
     res.json({
       reply,
@@ -223,7 +252,7 @@ router.post('/chat/message', async (req, res) => {
       metadata: {
         trimester,
         language,
-        messageCount: conversation.length
+        messageCount: finalConversation.length
       }
     });
 
@@ -237,9 +266,27 @@ router.post('/chat/message', async (req, res) => {
 });
 
 // GET /api/chat/history/:sessionId - Get conversation history
-router.get('/chat/history/:sessionId', (req, res) => {
+router.get('/chat/history/:sessionId', async (req, res) => {
   try {
     const { sessionId } = req.params;
+    
+    // Try MongoDB first
+    try {
+      const conv = await Conversation.findOne({ sessionId });
+      if (conv && conv.messages && conv.messages.length > 0) {
+        return res.json({
+          messages: conv.messages.map(m => ({
+            role: m.role,
+            content: m.content,
+            timestamp: m.timestamp
+          }))
+        });
+      }
+    } catch (error) {
+      console.warn('MongoDB query failed, using in-memory:', error.message);
+    }
+    
+    // Fallback to in-memory
     const conversation = conversations.get(sessionId) || [];
     
     res.json({

@@ -25,45 +25,127 @@ export default function ChatPage() {
 
   const [selectedLanguage, setSelectedLanguage] = useState("en")
   const [selectedTrimester, setSelectedTrimester] = useState("1")
+  const [sessionId, setSessionId] = useState<string>("")
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   // Voice features
   const { speak, stopSpeaking, isSupported } = useVoice()
 
+  // Helper: Save messages to localStorage
+  const saveMessagesToLocal = (msgs: Message[]) => {
+    if (typeof window === 'undefined') return
+    try {
+      const storedSessionId = localStorage.getItem("arogyamaa_session_id") || "default"
+      const key = `arogyamaa_chat_messages_${storedSessionId}`
+      localStorage.setItem(key, JSON.stringify(msgs))
+    } catch (error) {
+      console.error("Failed to save messages to localStorage:", error)
+    }
+  }
+
+  // Helper: Load messages from localStorage
+  const loadMessagesFromLocal = (): Message[] => {
+    if (typeof window === 'undefined') return []
+    try {
+      const storedSessionId = localStorage.getItem("arogyamaa_session_id") || "default"
+      const key = `arogyamaa_chat_messages_${storedSessionId}`
+      const existing = localStorage.getItem(key)
+      if (existing) {
+        const msgs = JSON.parse(existing)
+        // Convert timestamp strings back to Date objects
+        return msgs.map((msg: any) => ({
+          ...msg,
+          timestamp: new Date(msg.timestamp)
+        }))
+      }
+    } catch (error) {
+      console.error("Failed to load messages from localStorage:", error)
+    }
+    return []
+  }
+
+  // Load messages from localStorage IMMEDIATELY on mount (synchronous, before async)
+  useEffect(() => {
+    const localMessages = loadMessagesFromLocal()
+    if (localMessages.length > 0) {
+      console.log("Loading", localMessages.length, "messages from localStorage on mount")
+      setMessages(localMessages)
+    }
+  }, [])
+
   useEffect(() => {
     initChat()
   }, [])
 
   const initChat = async () => {
-    await chatAPI.initSession({
-      language: selectedLanguage,
-      trimester: selectedTrimester,
-    })
+    // FIRST: Always try to load from localStorage immediately (fastest)
+    const localMessages = loadMessagesFromLocal()
+    if (localMessages.length > 0) {
+      console.log("Loading messages from localStorage:", localMessages.length)
+      setMessages(localMessages)
+    }
 
-    const history = await chatAPI.getHistory()
-    if (history?.messages) {
-      setMessages(history.messages)
-    } else {
-      const welcomeMsg = {
-        id: "1",
-        role: "assistant" as const,
-        content: selectedLanguage === 'hi' 
-          ? "नमस्ते! मैं आरोग्यमाँ हूँ, आपकी स्वास्थ्य साथी। मैं आज आपकी कैसे मदद कर सकती हूँ?"
-          : "Namaste! I'm ArogyaMaa, your wellness companion. How can I support you today?",
-        timestamp: new Date(),
+    // THEN: Initialize session and try backend
+    try {
+      await chatAPI.initSession({
+        language: selectedLanguage,
+        trimester: selectedTrimester,
+      })
+
+      // Try to load from backend (but don't overwrite if we already have local messages)
+      const history = await chatAPI.getHistory()
+      if (history?.messages && history.messages.length > 0) {
+        // Only update if backend has more messages or different content
+        if (history.messages.length > localMessages.length) {
+          setMessages(history.messages)
+          saveMessagesToLocal(history.messages)
+        }
+      } else if (localMessages.length === 0) {
+        // No local messages and no backend history, show welcome
+        const welcomeMsg = {
+          id: "1",
+          role: "assistant" as const,
+          content: selectedLanguage === 'hi' 
+            ? "नमस्ते! मैं आरोग्यमाँ हूँ, आपकी स्वास्थ्य साथी। मैं आज आपकी कैसे मदद कर सकती हूँ?"
+            : "Namaste! I'm ArogyaMaa, your wellness companion. How can I support you today?",
+          timestamp: new Date(),
+        }
+        setMessages([welcomeMsg])
+        saveMessagesToLocal([welcomeMsg])
+        
+        // Speak welcome message if voice is enabled
+        if (voiceEnabled) {
+          speak(welcomeMsg.content, selectedLanguage)
+        }
       }
-      setMessages([welcomeMsg])
-      
-      // Speak welcome message if voice is enabled
-      if (voiceEnabled) {
-        speak(welcomeMsg.content, selectedLanguage)
+    } catch (error) {
+      console.warn("Failed to init session, using localStorage only:", error)
+      // If backend fails, ensure we have at least welcome message
+      if (localMessages.length === 0) {
+        const welcomeMsg = {
+          id: "1",
+          role: "assistant" as const,
+          content: selectedLanguage === 'hi' 
+            ? "नमस्ते! मैं आरोग्यमाँ हूँ, आपकी स्वास्थ्य साथी। मैं आज आपकी कैसे मदद कर सकती हूँ?"
+            : "Namaste! I'm ArogyaMaa, your wellness companion. How can I support you today?",
+          timestamp: new Date(),
+        }
+        setMessages([welcomeMsg])
+        saveMessagesToLocal([welcomeMsg])
       }
     }
   }
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [messages])
+
+  // Auto-save messages to localStorage whenever they change
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveMessagesToLocal(messages)
+    }
   }, [messages])
 
   const handleSendMessage = async () => {
@@ -79,23 +161,34 @@ export default function ChatPage() {
       timestamp: new Date(),
     }
 
-    setMessages((prev) => [...prev, newUserMsg])
-    setLoading(true)
-
-    try {
-      const res = await chatAPI.sendMessage(userText, {
-        language: selectedLanguage,
-        trimester: selectedTrimester,
+      setMessages((prev) => {
+        const updated = [...prev, newUserMsg]
+        saveMessagesToLocal(updated)
+        return updated
       })
+      setLoading(true)
 
-      const botReply: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: res.reply,
-        timestamp: new Date(),
-      }
+      try {
+        const res = await chatAPI.sendMessage(userText, {
+          language: selectedLanguage,
+          trimester: selectedTrimester,
+        })
 
-      setMessages((prev) => [...prev, botReply])
+        const botReply: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: res.reply,
+          timestamp: new Date(),
+        }
+
+        setMessages((prev) => {
+          const updated = [...prev, botReply]
+          saveMessagesToLocal(updated)
+          return updated
+        })
+
+        // Track progress - message sent (with localStorage fallback)
+        trackProgressWithLocal('message')
 
       // Speak response if voice is enabled
       if (voiceEnabled && res.reply) {
@@ -109,15 +202,19 @@ export default function ChatPage() {
         ? "⚠️ कुछ गलत हो गया। कृपया पुनः प्रयास करें।"
         : "⚠️ Oops! Something went wrong. Please try again."
       
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now().toString(),
-          role: "assistant",
-          content: errorMsg,
-          timestamp: new Date(),
-        },
-      ])
+      setMessages((prev) => {
+        const updated = [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            role: "assistant",
+            content: errorMsg,
+            timestamp: new Date(),
+          },
+        ]
+        saveMessagesToLocal(updated)
+        return updated
+      })
     }
 
     setLoading(false)
@@ -126,9 +223,106 @@ export default function ChatPage() {
   const handleVoiceInput = (transcript: string) => {
     console.log('Received transcript:', transcript)
     setInputValue(transcript)
+    // Track voice interaction
+    trackProgress('voice')
     // Optionally auto-send after voice input
     // setTimeout(() => handleSendMessage(), 500)
   }
+
+  // Helper: Update progress metrics in localStorage
+  const updateProgressLocal = (activity: string) => {
+    if (typeof window === 'undefined') return
+    try {
+      const storedSessionId = localStorage.getItem("arogyamaa_session_id") || "default"
+      const key = `arogyamaa_progress_${storedSessionId}`
+      const existing = localStorage.getItem(key)
+      const progress = existing ? JSON.parse(existing) : {
+        metrics: {
+          totalMessages: 0,
+          totalTipsViewed: 0,
+          totalDaysActive: 1,
+          totalVoiceInteractions: 0,
+          totalFeedbackGiven: 0,
+          streakDays: 1,
+          longestStreak: 1,
+          lastActiveDate: new Date().toISOString().split('T')[0]
+        }
+      }
+
+      const today = new Date().toISOString().split('T')[0]
+      const lastActive = progress.metrics.lastActiveDate || today
+
+      // Update streak
+      if (today !== lastActive) {
+        const yesterday = new Date(lastActive)
+        yesterday.setDate(yesterday.getDate() + 1)
+        const yesterdayStr = yesterday.toISOString().split('T')[0]
+        
+        if (today === yesterdayStr) {
+          progress.metrics.streakDays = (progress.metrics.streakDays || 1) + 1
+          if (progress.metrics.streakDays > (progress.metrics.longestStreak || 1)) {
+            progress.metrics.longestStreak = progress.metrics.streakDays
+          }
+        } else {
+          progress.metrics.streakDays = 1
+        }
+        
+        progress.metrics.totalDaysActive = (progress.metrics.totalDaysActive || 1) + 1
+        progress.metrics.lastActiveDate = today
+      }
+
+      // Track specific activities
+      switch (activity) {
+        case 'message':
+          progress.metrics.totalMessages = (progress.metrics.totalMessages || 0) + 1
+          break
+        case 'tip':
+          progress.metrics.totalTipsViewed = (progress.metrics.totalTipsViewed || 0) + 1
+          break
+        case 'voice':
+          progress.metrics.totalVoiceInteractions = (progress.metrics.totalVoiceInteractions || 0) + 1
+          break
+        case 'feedback':
+          progress.metrics.totalFeedbackGiven = (progress.metrics.totalFeedbackGiven || 0) + 1
+          break
+      }
+
+      localStorage.setItem(key, JSON.stringify(progress))
+      console.log("Progress updated locally:", activity, progress.metrics)
+    } catch (error) {
+      console.error("Failed to update progress locally:", error)
+    }
+  }
+
+  const trackProgressWithLocal = async (activity: string) => {
+    // Always update localStorage first
+    updateProgressLocal(activity)
+    
+    // Also try backend
+    if (typeof window === 'undefined') return
+    try {
+      const storedSessionId = localStorage.getItem("arogyamaa_session_id")
+      if (!storedSessionId) return
+
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || "https://arogyamaa.onrender.com"}/api/progress/${storedSessionId}/track`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ activity })
+      })
+      
+      if (response.ok) {
+        console.log("Progress tracked on backend:", activity)
+      } else {
+        // Backend unavailable, but localStorage already updated
+        console.warn("Progress tracking unavailable (backend may be down), using localStorage")
+      }
+    } catch (error) {
+      // Backend unavailable, but localStorage already updated
+      // Don't log to avoid console spam
+    }
+  }
+
+  const trackProgress = trackProgressWithLocal
 
   const toggleVoiceOutput = () => {
     if (voiceEnabled) {
@@ -183,25 +377,22 @@ export default function ChatPage() {
       </div>
 
       <main className="flex-1 container mx-auto px-4 py-6 flex flex-col gap-6 max-w-4xl">
-        <TipOfTheDay />
+        <TipOfTheDay 
+          onTipViewed={() => trackProgress('tip')}
+          sessionId={sessionId}
+          language={selectedLanguage}
+        />
 
         <div className="flex-1 space-y-4 overflow-y-auto">
           {messages.map((m) => (
             <div key={m.id} className="relative group">
-              <ChatMessage message={m} />
-              
-              {/* Listen button for assistant messages */}
-              {m.role === 'assistant' && isSupported && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => speak(m.content, selectedLanguage)}
-                  className="absolute -bottom-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity text-xs gap-1"
-                >
-                  <Volume2 className="w-3 h-3" />
-                  {selectedLanguage === 'hi' ? 'सुनें' : 'Listen'}
-                </Button>
-              )}
+              <ChatMessage 
+                message={m} 
+                onBookmark={(content) => {
+                  // Bookmark functionality handled in component
+                }}
+                language={selectedLanguage}
+              />
             </div>
           ))}
 
